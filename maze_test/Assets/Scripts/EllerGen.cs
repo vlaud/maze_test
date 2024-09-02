@@ -202,13 +202,6 @@ public class EllerGen : MonoBehaviour
         return y * width + x;
     }
 
-    int GetCellOrder(int[] coord)
-    {
-        int x = coord[0];
-        int y = coord[1];
-        return y * width + x;
-    }
-
     int[] GetCoord(int cell)
     {
         int x = cell % width;
@@ -216,18 +209,6 @@ public class EllerGen : MonoBehaviour
         int[] coord = new int[2] { x, y };
 
         return coord;
-    }
-
-    int GetCellSetNumber(int x, int y)
-    {
-        int cell = GetCellOrder(x, y);
-
-        if (cell != coordSetNums[cell])
-        {
-            cell = GetCellOrder(GetCoord(cell));
-        }
-
-        return cell;
     }
 
     void MergeSets(int x1, int x2, int currenY)
