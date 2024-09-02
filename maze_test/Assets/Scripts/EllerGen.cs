@@ -98,7 +98,7 @@ public class EllerGen : MonoBehaviour
             // 세로 벽 처리
             if (y < height - 1)
             {
-                foreach (var set in GetUniqueSets(y).Values)
+                foreach (var set in sets.Values)
                 {
                     int Count = 0;
                     elems[elemIndex] = new List<int>();
@@ -235,27 +235,32 @@ public class EllerGen : MonoBehaviour
         next = coordSetNums[GetCellOrder(x2, currenY)];
     }
 
-    Dictionary<int, HashSet<int>> GetUniqueSets(int y)
-    {
-        Dictionary<int, HashSet<int>> uniqueDic = new Dictionary<int, HashSet<int>>();
-        HashSet<HashSet<int>> uniqueSets = new HashSet<HashSet<int>>();
+    ///// <summary>
+    ///// 사용 안함
+    ///// </summary>
+    ///// <param name="y"></param>
+    ///// <returns></returns>
+    //Dictionary<int, HashSet<int>> GetUniqueSets(int y)
+    //{
+    //    Dictionary<int, HashSet<int>> uniqueDic = new Dictionary<int, HashSet<int>>();
+    //    HashSet<HashSet<int>> uniqueSets = new HashSet<HashSet<int>>();
 
-        for (int x = 0; x < width; x++)
-        {
-            int cell = coordSetNums[GetCellOrder(x, y)];
-            uniqueSets.Add(sets[cell]);
-        }
+    //    for (int x = 0; x < width; x++)
+    //    {
+    //        int cell = coordSetNums[GetCellOrder(x, y)];
+    //        uniqueSets.Add(sets[cell]);
+    //    }
 
-        int i = 0;
+    //    int i = 0;
 
-        foreach (HashSet<int> set in uniqueSets)
-        {
-            uniqueDic.Add(i, set);
-            i++;
-        }
+    //    foreach (HashSet<int> set in uniqueSets)
+    //    {
+    //        uniqueDic.Add(i, set);
+    //        i++;
+    //    }
 
-        return uniqueDic;
-    }
+    //    return uniqueDic;
+    //}
 
     void InstantiateMaze()
     {
