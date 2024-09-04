@@ -16,6 +16,7 @@ public class MazeGen : MonoBehaviour
     [SerializeField]
     List<Cell> board;
     Stack<int> cellStack = new Stack<int>();
+    int boardCount = 0;
 
     [SerializeField]
     int currentCell; // Å½»ö À§Ä¡
@@ -66,6 +67,7 @@ public class MazeGen : MonoBehaviour
     void CreateBoard()
     {
         board = new List<Cell>();
+        boardCount = 0;
 
         for (int y = 0; y < mazeSize.y; ++y)
         {
@@ -75,21 +77,28 @@ public class MazeGen : MonoBehaviour
             }
         }
 
-        currentCell = Random.Range(0, board.Count);
-        cellStack.Push(currentCell);
+        cellStack = new Stack<int>();
+        cellStack.Push(Random.Range(0, board.Count));
     }
 
     void RecursiveBacktracking()
     {
-        if (cellStack.Count <= 0)
+        if (cellStack.Count <= 0 || boardCount >= board.Count)
         {
-            Debug.Log(currentCell + " finished");
+            Debug.Log($"{currentCell} finished");
             return;
         }
 
-        currentCell = cellStack.Peek();
-        board[currentCell].visited = true;
+        if (boardCount == 0) Debug.Log($"firstCell: {currentCell}");
 
+        currentCell = cellStack.Peek();
+
+        if (!board[currentCell].visited)
+        {
+            board[currentCell].visited = true;
+            boardCount++;
+        }
+        
         int nextCell = GetRandomNeighbour(currentCell);
 
         if (nextCell >= 0)
