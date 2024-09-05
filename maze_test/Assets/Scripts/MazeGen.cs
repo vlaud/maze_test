@@ -42,7 +42,8 @@ public class MazeGen : MonoBehaviour
     {
         DestroyMap();
         CreateBoard();
-        RecursiveBacktracking();
+        //RecursiveBacktracking();
+        GenerateMaze();
 
         for (int y = 0; y < mazeSize.y; ++y)
         {
@@ -79,6 +80,36 @@ public class MazeGen : MonoBehaviour
 
         cellStack = new Stack<int>();
         cellStack.Push(Random.Range(0, board.Count));
+    }
+
+    void GenerateMaze()
+    {
+        if (boardCount == 0) Debug.Log($"firstCell: {currentCell}");
+
+        while (cellStack.Count > 0 && boardCount < board.Count)
+        {
+            currentCell = cellStack.Peek();
+
+            if (!board[currentCell].visited)
+            {
+                board[currentCell].visited = true;
+                boardCount++;
+            }
+
+            int nextCell = GetRandomNeighbour(currentCell);
+
+            if (nextCell >= 0)
+            {
+                cellStack.Push(nextCell);
+                UpdateNeighbours(currentCell, nextCell);
+            }
+            else
+            {
+                cellStack.Pop();
+            }
+        }
+
+        Debug.Log($"{currentCell} finished");
     }
 
     void RecursiveBacktracking()
