@@ -13,19 +13,17 @@ public class EllerGen : MonoBehaviour
     bool isShowNum = false;
 
     [SerializeField]
-    bool isShowElem = false;
-
-    [SerializeField]
     Vector2Int offset;
     [SerializeField]
     float wallOffset = 3.5f;
 
+    private UnionFind unionFind;
+    private MapSetManager mapSetManager;
     private int[,] maze;
-    private Dictionary<int, int> coordSetNums = new Dictionary<int, int>();
-    private Dictionary<int, HashSet<int>> sets = new Dictionary<int, HashSet<int>>();
 
     void Start()
     {
+        SetStarts();
         GenerateMaze();
         InstantiateMaze();
     }
@@ -35,9 +33,16 @@ public class EllerGen : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.T))
         {
             DestroyMap();
+            SetStarts();
             GenerateMaze();
             InstantiateMaze();
         }
+    }
+    void SetStarts()
+    {
+        maze = new int[height, width];
+        unionFind = new UnionFind(width);
+        mapSetManager = new MapSetManager(height, width);
     }
 
     void DestroyMap()
@@ -50,217 +55,67 @@ public class EllerGen : MonoBehaviour
 
     void GenerateMaze()
     {
-        coordSetNums = new Dictionary<int, int>();
-        sets = new Dictionary<int, HashSet<int>>();
-        maze = new int[width, height];
-
-        GameObject rowNums = new GameObject($"rowNumList");
-        rowNums.transform.SetParent(transform);
-
-        GameObject ElemList = new GameObject($"elementsList");
-        ElemList.transform.SetParent(transform);
-
-        // ÃÊ±âÈ­
-        for (int x = 0; x < width; x++)
-        {
-            sets[x] = new HashSet<int> { x };
-            coordSetNums[x] = x;
-        }
-
         bool close = false;
 
-        // ¹Ì·Î »ı¼º
+        // 1 2 4 8 -> ìš° í›„ ì¢Œ ì „
         for (int y = 0; y < height; y++)
         {
-            // °¡·Î º® Ã³¸®
+            // ë§¨ ì˜¤ë¥¸ìª½ -1 ê¹Œì§€
             for (int x = 0; x < width - 1; x++)
             {
-                int curCell = coordSetNums[GetCellOrder(x, y)];
-                int nextCell = coordSetNums[GetCellOrder((x + 1), y)];
-                close = y < height - 1 ? Random.value > 0.5f : false;
-                if (sets[curCell].SetEquals(sets[nextCell]) || close)
+                // í˜„ì¬ í–‰ ë§ˆì§€ë§‰ í–‰ì´ë©´ ë¬´ì¡°ê±´ ì§‘í•© ì—°ê²°
+                close = y == height - 1 ? false : Random.value > 0.5f;
+
+                // í˜„ì¬ ì¹¸ê³¼ ë‹¤ìŒ ì¹¸ì˜ ì§‘í•© ë²ˆí˜¸ ê°€ì ¸ì˜¤ê¸°
+                int cur = mapSetManager.GetCoordSet(y, x);
+                int next = mapSetManager.GetCoordSet(y, x + 1);
+                
+                // ì§‘í•©ì´ ê°™ê±°ë‚˜ ë‹«ê¸°ë¡œ ë˜ì–´ìˆìœ¼ë©´ ë²½ ë¹„íŠ¸ ìƒì„±
+                if (unionFind.find(cur) == unionFind.find(next) || close)
                 {
-                    maze[x, y] |= 1; // ¿À¸¥ÂÊ º® Ãß°¡
-                    maze[x + 1, y] |= 4; // ¿ŞÂÊ º® Ãß°¡
+                    maze[y, x] |= 1; // ì˜¤ë¥¸ìª½ ë²½
+                    maze[y, x + 1] |= 4; // ì™¼ìª½ ë²½
+                    continue;
                 }
-                else
-                {
-                    MergeSets(x, x + 1, y);
-                    curCell = coordSetNums[GetCellOrder(x, y)];
-                    nextCell = coordSetNums[GetCellOrder((x + 1), y)];
-                }
+
+                // ì—´ê¸°ë¡œ ë˜ì–´ìˆìœ¼ë©´ ì§‘í•© í†µí•©
+                unionFind.merge(cur, next);
             }
 
-            // »õ·Î¿î ¼¼Æ®
-            Dictionary<int, HashSet<int>> newSets = new Dictionary<int, HashSet<int>>();
-            Dictionary<int, List<int>> elems = new Dictionary<int, List<int>>();
-            int elemIndex = 0;
-            // ¼¼·Î º® Ã³¸®
-            if (y < height - 1)
+            // í˜„ì¬ í–‰ì´ ë§ˆì§€ë§‰ í–‰ì´ë©´ ëë‚´ê¸°
+            if (y == height - 1) break;
+
+            // í˜„ì¬ í–‰ ëª¨ë“  ì—´ë“¤ì˜ ì§‘í•© ìœ„ë¡œ ì˜¬ë¦¬ê¸° ì„¤ì •
+            for (int x = 0; x < width; x++)
             {
-                foreach (var set in sets.Values)
+                // í˜„ì¬ ì¢Œí‘œì˜ ì§‘í•© ë²ˆí˜¸
+                int cur = mapSetManager.GetCoordSet(y, x);
+
+                // ì§‘í•© ë²ˆí˜¸ì˜ ë£¨íŠ¸ ë²ˆí˜¸
+                int root = unionFind.find(cur);
+
+                // ë£¨íŠ¸ ì§‘í•© ì‚¬ì´ì¦ˆ
+                int size = unionFind.GetSetSize(root);
+
+                close = size == 1 ? false : Random.value > 0.5f;
+
+                // ë‹«ê¸° ì„¤ì •
+                if (close)
                 {
-                    int Count = 0;
-                    elems[elemIndex] = new List<int>();
-                    for (int i = 0; i < set.Count; i++)
-                    {
-                        int curCell = set.ElementAt(i);
-                        elems[elemIndex].Add(curCell);
-                        int x = GetCoord(curCell)[0];
-                        int upCell = curCell + width;
-
-                        close = Random.value > 0.5f;
-
-                        if (i == set.Count - 1 && Count == 0)
-                        {
-                            close = false;
-                        }
-
-                        if (!close) // ¿­¸²
-                        {
-                            Count++;
-                            coordSetNums[upCell] = coordSetNums[curCell];
-                        }
-                        else // ´İÈû
-                        {
-                            maze[x, y] |= 8; // ¾Æ·¡ÂÊ º® Ãß°¡
-                            maze[x, y + 1] |= 2; // À§ÂÊ º® Ãß°¡
-
-                            coordSetNums[upCell] = upCell;
-                        }
-                        if (!newSets.ContainsKey(coordSetNums[upCell]))
-                        {
-                            newSets[coordSetNums[upCell]] = new HashSet<int>();
-                        }
-                        newSets[coordSetNums[upCell]].Add(upCell);
-                    }
-                    elemIndex++;
+                    // ìƒˆ ì§‘í•© ë²ˆí˜¸ ìƒì„± = ì§‘í•© ë²ˆí˜¸ ìµœëŒ€ ìˆ«ì + 1
+                    mapSetManager.SetCoordSet(y + 1, x, unionFind.MaxNum);
+                    unionFind.CreateSet();
+                    unionFind.SetSize(root, --size);
+                    maze[y, x] |= 8;
+                    maze[y + 1, x] |= 2;
+                    continue;
                 }
-                sets.Clear();
-                sets = newSets;
-            }
 
-            // TODO: È®ÀÎ °á°ú ÁıÇÕ ³»ºÎÀÇ ¼¿ ¼ø¼­µéÀÌ Áßº¹µÊ
-            if(isShowElem)
-            {
-                GameObject go = new GameObject($"Elements {y}");
-                go.transform.SetParent(ElemList.transform);
-                go.transform.localPosition = new Vector3(0, 0, y * offset.y);
-                int count = 0;
-                foreach (var e in elems)
-                {
-                    for (int i = 0; i < e.Value.Count; i++)
-                    {
-                        GameObject element = Instantiate(numberPrefab, go.transform);
-                        element.transform.localPosition = new Vector3(GetCoord(e.Value[i])[0] * offset.x, 0, 0);
-                        element.name = $"element {GetCoord(e.Value[i])[0]},{y}";
-
-                        if (element.TryGetComponent(out ShowNumber show))
-                        {
-                            show.AllOnOff(false);
-                            show.SetElement(count);
-                        }
-                    }
-                    count++;
-                }
-            }
-
-            if (isShowNum)
-            {
-                GameObject rowNum = new GameObject($"rowNum {y}");
-                rowNum.transform.parent = rowNums.transform;
-                rowNum.transform.localPosition = new Vector3(0, 0, y * offset.y);
-
-                for (int x = 0; x < width; x++)
-                {
-                    GameObject num = Instantiate(numberPrefab, rowNum.transform);
-                    num.transform.localPosition = new Vector3(x * offset.x, 0, 0);
-                    num.name = $"num {x},{y}";
-
-                    if (num.TryGetComponent(out ShowNumber shownum))
-                    {
-                        shownum.AllOnOff(false);
-                        shownum.SetNumber(coordSetNums[GetCellOrder(x, y)]);
-                        shownum.SetOrder(GetCellOrder(x, y));
-
-                        if ((maze[x, y] & 1) == 0)
-                        {
-                            shownum.SetRight(true);
-                        }
-                        if ((maze[x, y] & 8) == 0)
-                        {
-                            shownum.SetUP(true);
-                        }
-                    }
-                }
+                // ì—´ê¸° ì„¤ì • ì‹œ ë‹¤ìŒ í–‰ ì¢Œí‘œ ì§‘í•© ë²ˆí˜¸ë¥¼ ë£¨íŠ¸ë¡œ ì„¤ì •
+                mapSetManager.SetCoordSet(y + 1, x, root);
             }
         }
     }
-
-    int GetCellOrder(int x, int y)
-    {
-        return y * width + x;
-    }
-
-    int[] GetCoord(int cell)
-    {
-        int x = cell % width;
-        int y = cell / width;
-        int[] coord = new int[2] { x, y };
-
-        return coord;
-    }
-
-    void MergeSets(int x1, int x2, int currenY)
-    {
-        int curCoord = GetCellOrder(x1, currenY);
-        int nextCoord = GetCellOrder(x2, currenY);
-
-        int cur = coordSetNums[curCoord];
-        int next = coordSetNums[nextCoord];
-        // TODO: ¼öÁ¤ ÇÊ¿ä
-        int smaller = Mathf.Min(cur, next);
-        int larger = Mathf.Max(cur, next);
-        sets[smaller].UnionWith(sets[larger]);
-        //sets[larger] = sets[smaller];
-        sets[larger].Clear();
-        sets.Remove(larger);
-
-        foreach (int i in sets[smaller])
-        {
-            coordSetNums[i] = smaller;
-        }
-
-        cur = coordSetNums[GetCellOrder(x1, currenY)];
-        next = coordSetNums[GetCellOrder(x2, currenY)];
-    }
-
-    ///// <summary>
-    ///// »ç¿ë ¾ÈÇÔ
-    ///// </summary>
-    ///// <param name="y"></param>
-    ///// <returns></returns>
-    //Dictionary<int, HashSet<int>> GetUniqueSets(int y)
-    //{
-    //    Dictionary<int, HashSet<int>> uniqueDic = new Dictionary<int, HashSet<int>>();
-    //    HashSet<HashSet<int>> uniqueSets = new HashSet<HashSet<int>>();
-
-    //    for (int x = 0; x < width; x++)
-    //    {
-    //        int cell = coordSetNums[GetCellOrder(x, y)];
-    //        uniqueSets.Add(sets[cell]);
-    //    }
-
-    //    int i = 0;
-
-    //    foreach (HashSet<int> set in uniqueSets)
-    //    {
-    //        uniqueDic.Add(i, set);
-    //        i++;
-    //    }
-
-    //    return uniqueDic;
-    //}
 
     void InstantiateMaze()
     {
@@ -276,22 +131,35 @@ public class EllerGen : MonoBehaviour
                 tile.transform.parent = row.transform;
                 tile.transform.localPosition = new Vector3(x * offset.x, 0, 0);
 
-                if (x == width - 1 || (maze[x, y] & 1) != 0) // ¿À¸¥ÂÊ º®
+                ShowNumber shn = Instantiate(numberPrefab, tile.transform).GetComponent<ShowNumber>();
+                // í˜„ì¬ ì¢Œí‘œì˜ ì§‘í•© ë²ˆí˜¸
+                int cur = mapSetManager.GetCoordSet(y, x);
+
+                // ì§‘í•© ë²ˆí˜¸ì˜ ë£¨íŠ¸ ë²ˆí˜¸
+                int root = unionFind.find(cur);
+                shn.SetNumber(cur);
+                shn.SetOrder(root);
+
+                // ì˜¤ë¥¸ìª½ ë²½ ìƒì„±
+                if (x == width - 1 || (maze[y, x] & 1) != 0)
                 {
+                    shn.SetRight(false);
                     GameObject obj = Instantiate(wallPrefab, tile.transform);
                     obj.transform.localPosition = new Vector3(wallOffset, 0, 0);
                     obj.transform.localRotation = Quaternion.Euler(0, 90, 0);
                     obj.name = $"Right {x},{y}";
                 }
 
-                if (y == 0 || (maze[x, y] & 2) != 0) // ¾Æ·¡ÂÊ º®
+                // ë’· ë²½ ìƒì„±
+                if (y == 0 || (maze[y, x] & 2) != 0)
                 {
                     GameObject obj = Instantiate(wallPrefab, tile.transform);
                     obj.transform.localPosition = new Vector3(0, 0, -wallOffset);
-                    obj.name = $"Down {x},{y}";
+                    obj.name = $"Backward {x},{y}";
                 }
 
-                if (x == 0 || (maze[x, y] & 4) != 0) // ¿ŞÂÊ º®
+                // ì™¼ìª½ ë²½ ìƒì„±
+                if (x == 0 || (maze[y, x] & 4) != 0)
                 {
                     GameObject obj = Instantiate(wallPrefab, tile.transform);
                     obj.transform.localPosition = new Vector3(-wallOffset, 0, 0);
@@ -299,11 +167,13 @@ public class EllerGen : MonoBehaviour
                     obj.name = $"Left {x},{y}";
                 }
 
-                if (y == height - 1 || (maze[x, y] & 8) != 0) // À§ÂÊ º®
+                // ì• ë²½ ìƒì„±
+                if (y == height - 1 || (maze[y, x] & 8) != 0)
                 {
+                    shn.SetUP(false);
                     GameObject obj = Instantiate(wallPrefab, tile.transform);
                     obj.transform.localPosition = new Vector3(0, 0, wallOffset);
-                    obj.name = $"Up {x},{y}";
+                    obj.name = $"Forward {x},{y}";
                 }
             }
         }
